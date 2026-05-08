@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 投资日历</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --surface: #13151c;
+    --surface2: #1c1f2a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #f0f1f5;
+    --muted: #6b7280;
+    --accent: #7c6af7;
+    --accent-dim: rgba(124,106,247,0.15);
+    --up: #22d3a4;
+    --up-dim: rgba(34,211,164,0.12);
+    --down: #f87171;
+    --down-dim: rgba(248,113,113,0.12);
+    --neutral: #fbbf24;
+    --neutral-dim: rgba(251,191,36,0.12);
+    --high: #f87171;
+    --med: #fbbf24;
+    --low: #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,11,15,0.9);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; }
+  .logo-text { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+  .logo-text span { color: var(--accent); }
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .week-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: var(--up);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* WEEK NAV */
+  .week-nav {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    padding: 1.5rem 2rem 0;
+    scrollbar-width: none;
+  }
+  .week-nav::-webkit-scrollbar { display: none; }
+  .day-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px 10px 0 0;
+    cursor: pointer;
+    min-width: 80px;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    border-bottom: none;
+    flex-shrink: 0;
+  }
+  .day-tab:hover { background: var(--surface); }
+  .day-tab.active {
+    background: var(--surface);
+    border-color: var(--border2);
+    border-bottom-color: var(--surface);
+  }
+  .day-name {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .day-tab.active .day-name { color: var(--accent); }
+  .day-num {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 2px;
+    color: var(--muted);
+  }
+  .day-tab.active .day-num { color: var(--text); }
+  .day-count {
+    margin-top: 4px;
+    font-size: 0.65rem;
+    font-family: 'DM Mono', monospace;
+    background: var(--accent-dim);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 20px;
+    opacity: 0;
+  }
+  .day-tab.has-events .day-count { opacity: 1; }
+
+  /* MAIN CONTENT */
+  main {
+    padding: 0 2rem 3rem;
+  }
+  .content-panel {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-top: none;
+    border-radius: 0 12px 12px 12px;
+    padding: 1.5rem;
+    min-height: 400px;
+  }
+
+  /* FILTERS */
+  .filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* EVENT LIST */
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .event-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    animation: fadeIn 0.3s ease both;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .event-card:hover {
+    border-color: var(--border2);
+    background: rgba(28,31,42,0.8);
+  }
+  .event-card.expanded { border-color: var(--accent); }
+
+  .event-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .event-time-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 52px;
+    padding-top: 2px;
+  }
+  .event-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .event-tz {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+  .event-main { flex: 1; }
+  .event-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .event-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .country-badge {
+    font-size: 0.65rem;
+    font-family: 'DM Mono', monospace;
+    background: rgba(255,255,255,0.06);
+    color: var(--muted);
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+  }
+  .importance-badge {
+    font-size: 0.65rem;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .imp-high { background: rgba(248,113,113,0.15); color: var(--high); }
+  .imp-med { background: rgba(251,191,36,0.15); color: var(--med); }
+  .imp-low { background: rgba(74,222,128,0.15); color: var(--low); }
+
+  /* ASSET IMPACTS */
+  .impact-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .impact-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .impact-chip:hover { filter: brightness(1.15); }
+  .ic-up { background: var(--up-dim); color: var(--up); border-color: rgba(34,211,164,0.2); }
+  .ic-down { background: var(--down-dim); color: var(--down); border-color: rgba(248,113,113,0.2); }
+  .ic-neutral { background: var(--neutral-dim); color: var(--neutral); border-color: rgba(251,191,36,0.2); }
+
+  .arrow-up::before { content: "↑ "; }
+  .arrow-down::before { content: "↓ "; }
+  .arrow-neutral::before { content: "→ "; }
+
+  /* EXPAND DETAIL */
+  .event-detail {
+    display: none;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    animation: fadeIn 0.2s ease;
+  }
+  .event-card.expanded .event-detail { display: block; }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 480px) { .detail-grid { grid-template-columns: 1fr; } }
+  .detail-box {
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .detail-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .detail-value {
+    font-size: 0.85rem;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .ai-insight {
+    background: var(--accent-dim);
+    border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.83rem;
+    color: rgba(240,241,245,0.85);
+    line-height: 1.6;
+  }
+  .ai-insight-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--muted);
+    gap: 10px;
+  }
+  .empty-icon { font-size: 2rem; opacity: 0.3; }
+  .empty-text { font-size: 0.85rem; }
+
+  /* SUMMARY BAR */
+  .summary-bar {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .summary-bar::-webkit-scrollbar { display: none; }
+  .stat-item { display: flex; flex-direction: column; min-width: max-content; }
+  .stat-val {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .stat-key {
+    font-size: 0.65rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .stat-high { color: var(--high); }
+  .stat-up { color: var(--up); }
+  .stat-accent { color: var(--accent); }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    header { padding: 1rem; }
+    .header-meta .week-label { display: none; }
+    main, .week-nav, .summary-bar { padding-left: 1rem; padding-right: 1rem; }
+    .content-panel { padding: 1rem; }
+    .day-tab { min-width: 60px; padding: 0.6rem 0.8rem; }
+    .day-num { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 18 18" fill="none">
+        <path d="M3 14L7 8L11 11L15 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="15" cy="4" r="1.5" fill="white"/>
+      </svg>
+    </div>
+    <div class="logo-text">AI 投资<span>日历</span></div>
+  </div>
+  <div class="header-meta">
+    <div class="live-dot"></div>
+    <div class="week-label" id="weekLabel"></div>
+  </div>
+</header>
+
+<div class="summary-bar">
+  <div class="stat-item">
+    <div class="stat-val stat-accent" id="totalEvents">—</div>
+    <div class="stat-key">本周事件</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val stat-high" id="highImpact">—</div>
+    <div class="stat-key">高影响</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val stat-up" id="bullish">—</div>
+    <div class="stat-key">利多信号</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val" style="color:var(--down)" id="bearish">—</div>
+    <div class="stat-key">利空信号</div>
+  </div>
+</div>
+
+<div class="week-nav" id="weekNav"></div>
+
+<main>
+  <div class="content-panel">
+    <div class="filters" id="filters">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="股票">股票</button>
+      <button class="filter-btn" data-filter="债券">债券</button>
+      <button class="filter-btn" data-filter="汇率">汇率</button>
+      <button class="filter-btn" data-filter="商品">商品</button>
+      <button class="filter-btn" data-filter="high">仅高影响</button>
+    </div>
+    <div class="event-list" id="eventList"></div>
+  </div>
+</main>
+
+<script>
+const EVENTS = {
+  1: [
+    {
+      time: "09:30", tz: "北京",
+      name: "中国PMI制造业指数",
+      country: "CN",
+      importance: "high",
+      prev: "50.8", forecast: "50.6",
+      impacts: {
+        "股票": { dir: "down", strength: "中", note: "低于预期可能压制A股" },
+        "债券": { dir: "up", strength: "中", note: "需求放缓推升国债价格" },
+        "汇率": { dir: "down", strength: "弱", note: "人民币小幅承压" },
+        "商品": { dir: "down", strength: "强", note: "铁矿石、铜价料下行" }
+      },
+      ai: "制造业景气度料继续回落，市场情绪偏谨慎。若实际数据低于50荣枯线，资源板块将面临较大抛压，建议关注防守性行业配置机会。"
+    },
+    {
+      time: "21:00", tz: "北京",
+      name: "美国ISM制造业PMI",
+      country: "US",
+      importance: "high",
+      prev: "49.0", forecast: "49.5",
+      impacts: {
+        "股票": { dir: "neutral", strength: "中", note: "预期已基本price-in" },
+        "债券": { dir: "up", strength: "中", note: "弱制造数据利好美债" },
+        "汇率": { dir: "down", strength: "中", note: "美元指数承压回调" },
+        "商品": { dir: "neutral", strength: "弱", note: "原油短期震荡" }
+      },
+      ai: "美国制造业连续收缩，但降幅收窄显示经济韧性。此数据或推迟市场对美联储降息的预期时间表，美股短期可能出现分化，科技股相对抗跌。"
+    }
+  ],
+  2: [
+    {
+      time: "10:00", tz: "北京",
+      name: "欧元区通胀率 (CPI)",
+      country: "EU",
+      importance: "high",
+      prev: "2.4%", forecast: "2.2%",
+      impacts: {
+        "股票": { dir: "up", strength: "中", note: "通胀降温利好欧股" },
+        "债券": { dir: "up", strength: "强", note: "欧债大幅走强" },
+        "汇率": { dir: "down", strength: "中", note: "欧元/美元承压" },
+        "商品": { dir: "neutral", strength: "弱", note: "黄金小幅波动" }
+      },
+      ai: "欧元区通胀持续朝ECB目标收敛，市场将加注9月降息。欧债短端利率预计显著下行，欧元区银行股受流动性改善提振。能源股面临通缩压力。"
+    },
+    {
+      time: "14:30", tz: "北京",
+      name: "日本央行政策会议纪要",
+      country: "JP",
+      importance: "med",
+      prev: "—", forecast: "—",
+      impacts: {
+        "股票": { dir: "neutral", strength: "弱", note: "日经225小幅波动" },
+        "债券": { dir: "down", strength: "中", note: "日债收益率或上行" },
+        "汇率": { dir: "up", strength: "强", note: "日元走强预期升温" },
+        "商品": { dir: "neutral", strength: "弱", note: "影响有限" }
+      },
+      ai: "若纪要显示委员对退出超宽松政策讨论增多，美元/日元可能跌破152，套息交易面临平仓压力。日本国内金融股受益，出口商股价承压。"
+    }
+  ],
+  3: [
+    {
+      time: "20:15", tz: "北京",
+      name: "美国ADP非农就业",
+      country: "US",
+      importance: "med",
+      prev: "184K", forecast: "175K",
+      impacts: {
+        "股票": { dir: "neutral", strength: "弱", note: "视数据方向而定" },
+        "债券": { dir: "neutral", strength: "弱", note: "等待周五正式数据" },
+        "汇率": { dir: "neutral", strength: "弱", note: "美元短线波动" },
+        "商品": { dir: "neutral", strength: "弱", note: "影响有限" }
+      },
+      ai: "ADP数据为周五非农就业提供先行参考，但两者历史相关性并不稳定。市场可能对此数据反应较为克制，真正的行情催化在周五。"
+    },
+    {
+      time: "21:30", tz: "北京",
+      name: "美国贸易收支",
+      country: "US",
+      importance: "low",
+      prev: "-68.9B", forecast: "-67.0B",
+      impacts: {
+        "股票": { dir: "neutral", strength: "弱", note: "市场关注度低" },
+        "债券": { dir: "neutral", strength: "弱", note: "影响微弱" },
+        "汇率": { dir: "neutral", strength: "弱", note: "小幅扰动" },
+        "商品": { dir: "neutral", strength: "弱", note: "原油进口数据值得关注" }
+      },
+      ai: "贸易赤字小幅收窄预期已被消化，市场对此数据关注度相对较低。值得关注的是对华贸易数据变化及关税政策影响。"
+    }
+  ],
+  4: [
+    {
+      time: "20:30", tz: "北京",
+      name: "美国初请失业金人数",
+      country: "US",
+      importance: "med",
+      prev: "222K", forecast: "225K",
+      impacts: {
+        "股票": { dir: "up", strength: "弱", note: "就业韧性支撑消费股" },
+        "债券": { dir: "down", strength: "弱", note: "强劲数据压制债价" },
+        "汇率": { dir: "up", strength: "弱", note: "美元短线走强" },
+        "商品": { dir: "up", strength: "弱", note: "原油需求预期改善" }
+      },
+      ai: "初请连续低于预期将强化美国就业市场韧性叙事，推迟市场降息预期。黄金可能面临短线回调压力，美元指数维持强势。"
+    },
+    {
+      time: "02:00", tz: "北京(次日)",
+      name: "美联储鲍威尔讲话",
+      country: "US",
+      importance: "high",
+      prev: "—", forecast: "—",
+      impacts: {
+        "股票": { dir: "down", strength: "强", note: "鹰派信号将引发抛售" },
+        "债券": { dir: "down", strength: "强", note: "利率预期重新定价" },
+        "汇率": { dir: "up", strength: "强", note: "美元大幅走强" },
+        "商品": { dir: "down", strength: "中", note: "黄金、原油承压" }
+      },
+      ai: "鲍威尔本次讲话是本周最高风险事件。若强调通胀仍具粘性或重申不急于降息，市场可能经历剧烈重新定价。建议在讲话前适当降低风险资产敞口。"
+    }
+  ],
+  5: [
+    {
+      time: "20:30", tz: "北京",
+      name: "美国非农就业人数",
+      country: "US",
+      importance: "high",
+      prev: "303K", forecast: "240K",
+      impacts: {
+        "股票": { dir: "neutral", strength: "强", note: "数据超预期可能利空" },
+        "债券": { dir: "down", strength: "强", note: "预计承压明显" },
+        "汇率": { dir: "up", strength: "强", note: "美元指数显著上行" },
+        "商品": { dir: "down", strength: "中", note: "黄金压力较大" }
+      },
+      ai: "本周重磅压轴数据。若就业超预期强劲（>270K），市场将彻底推迟降息预期至2025年，引发股债双杀；若低于200K，则触发避险情绪并重燃降息叙事，贵金属受益明显。"
+    },
+    {
+      time: "20:30", tz: "北京",
+      name: "美国失业率",
+      country: "US",
+      importance: "high",
+      prev: "3.8%", forecast: "3.8%",
+      impacts: {
+        "股票": { dir: "neutral", strength: "中", note: "配合非农解读" },
+        "债券": { dir: "neutral", strength: "中", note: "联动非农数据" },
+        "汇率": { dir: "neutral", strength: "中", note: "与非农同步定价" },
+        "商品": { dir: "neutral", strength: "弱", note: "间接影响" }
+      },
+      ai: "失业率若意外上升至3.9%或以上，将强化经济软化预期，即便非农数据不差也可能引发降息预期升温，对美债形成支撑。"
+    }
+  ]
+};
+
+const DAYS = ["周一", "周二", "周三", "周四", "周五"];
+const DM = { up: "ic-up arrow-up", down: "ic-down arrow-down", neutral: "ic-neutral arrow-neutral" };
+const IM = { high: "imp-high", med: "imp-med", low: "imp-low" };
+const IL = { high: "★★★ 高", med: "★★☆ 中", low: "★☆☆ 低" };
+
+let activeDay = 4;
+let activeFilter = "all";
+
+function getWeekDates() {
+  const now = new Date();
+  const dow = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+  return Array.from({length: 5}, (_, i) => {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    return d;
+  });
+}
+
+function init() {
+  const dates = getWeekDates();
+  const now = new Date();
+  
+  const d0 = dates[0], d4 = dates[4];
+  document.getElementById('weekLabel').textContent =
+    `${d0.getMonth()+1}/${d0.getDate()} — ${d4.getMonth()+1}/${d4.getDate()}`;
+
+  // today highlight
+  const todayDow = now.getDay();
+  if (todayDow >= 1 && todayDow <= 5) activeDay = todayDow;
+
+  const nav = document.getElementById('weekNav');
+  nav.innerHTML = '';
+  dates.forEach((d, i) => {
+    const count = (EVENTS[i+1] || []).length;
+    const isActive = (i+1) === activeDay;
+    const tab = document.createElement('div');
+    tab.className = `day-tab ${isActive ? 'active' : ''} ${count > 0 ? 'has-events' : ''}`;
+    tab.innerHTML = `
+      <div class="day-name">${DAYS[i]}</div>
+      <div class="day-num">${d.getDate()}</div>
+      <div class="day-count">${count}</div>
+    `;
+    tab.addEventListener('click', () => { activeDay = i+1; render(); });
+    nav.appendChild(tab);
+  });
+
+  // summary
+  let total = 0, high = 0, bull = 0, bear = 0;
+  Object.values(EVENTS).forEach(dayEvts => {
+    dayEvts.forEach(e => {
+      total++;
+      if (e.importance === 'high') high++;
+      let ups = 0, downs = 0;
+      Object.values(e.impacts).forEach(imp => {
+        if (imp.dir === 'up') ups++;
+        if (imp.dir === 'down') downs++;
+      });
+      if (ups > downs) bull++;
+      else if (downs > ups) bear++;
+    });
+  });
+  document.getElementById('totalEvents').textContent = total;
+  document.getElementById('highImpact').textContent = high;
+  document.getElementById('bullish').textContent = bull;
+  document.getElementById('bearish').textContent = bear;
+
+  renderFilters();
+  renderEvents();
+}
+
+function renderFilters() {
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === activeFilter);
+    btn.addEventListener('click', () => {
+      activeFilter = btn.dataset.filter;
+      renderFilters();
+      renderEvents();
+    });
+  });
+}
+
+function filterEvents(events) {
+  if (activeFilter === 'all') return events;
+  if (activeFilter === 'high') return events.filter(e => e.importance === 'high');
+  return events.filter(e => e.impacts[activeFilter]);
+}
+
+function renderEvents() {
+  // Update nav active state
+  document.querySelectorAll('.day-tab').forEach((tab, i) => {
+    tab.classList.toggle('active', (i+1) === activeDay);
+  });
+
+  const list = document.getElementById('eventList');
+  const events = filterEvents(EVENTS[activeDay] || []);
+
+  if (!events.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text">今日暂无符合筛选条件的财经事件</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = events.map((e, idx) => {
+    const impChips = Object.entries(e.impacts).map(([asset, imp]) => `
+      <div class="impact-chip ${DM[imp.dir]}" title="${imp.note}">
+        ${asset} ${imp.strength}
+      </div>
+    `).join('');
+
+    const detailBoxes = Object.entries(e.impacts).map(([asset, imp]) => `
+      <div class="detail-box">
+        <div class="detail-label">${asset}</div>
+        <div class="detail-value" style="color: ${imp.dir==='up'?'var(--up)':imp.dir==='down'?'var(--down)':'var(--neutral)'}">${imp.dir==='up'?'↑ 利多':'↓ 利空' || '→ 中性'} · ${imp.strength}</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:3px;">${imp.note}</div>
+      </div>
+    `).join('');
+
+    return `
+      <div class="event-card" style="animation-delay:${idx*0.06}s" onclick="toggleCard(this)">
+        <div class="event-header">
+          <div class="event-time-block">
+            <div class="event-time">${e.time}</div>
+            <div class="event-tz">${e.tz}</div>
+          </div>
+          <div class="event-main">
+            <div class="event-title-row">
+              <span class="event-name">${e.name}</span>
+              <span class="country-badge">${e.country}</span>
+              <span class="importance-badge ${IM[e.importance]}">${IL[e.importance]}</span>
+            </div>
+            <div class="impact-row">${impChips}</div>
+          </div>
+        </div>
+        <div class="event-detail">
+          <div class="detail-grid">
+            <div class="detail-box">
+              <div class="detail-label">前值</div>
+              <div class="detail-value">${e.prev}</div>
+            </div>
+            <div class="detail-box">
+              <div class="detail-label">预测值</div>
+              <div class="detail-value" style="color:var(--accent)">${e.forecast}</div>
+            </div>
+            ${detailBoxes}
+          </div>
+          <div class="ai-insight">
+            <div class="ai-insight-label">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1"/>
+                <path d="M4 6l1.5 1.5L8 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+              AI 市场洞察
+            </div>
+            ${e.ai}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleCard(el) {
+  el.classList.toggle('expanded');
+}
+
+function render() {
+  renderFilters();
+  renderEvents();
+  document.querySelectorAll('.day-tab').forEach((tab, i) => {
+    tab.classList.toggle('active', (i+1) === activeDay);
+  });
+}
+
+init();
+</script>
+</body>
+</html>
